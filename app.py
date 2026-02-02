@@ -462,7 +462,7 @@ else:
 st.header("🗓️ Interview Process")
 if st.session_state["jd_id"]:
     cur = conn.cursor()
-    cur.execute("SELECT id, resume_name FROM candidates WHERE jd_id = %s AND status = 'shortlisted'", (st.session_state["jd_id"],))
+    cur.execute("SELECT id, resume_name FROM candidates WHERE jd_id = %s ", (st.session_state["jd_id"],))
     candidates = cur.fetchall()
     cur.close()
     candidate_map = {c[1]: c[0] for c in candidates} if candidates else {}
