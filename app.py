@@ -219,13 +219,54 @@ if selected_jd != "Create New JD":
     st.success(f"Loaded JD: {selected_jd} ✅")
 
 # ---------------- JD Upload/Create ----------------
-st.header("Create/Update JD")
-jd_title = st.text_input("JD Title")
-jd_text_input = st.text_area("JD Text")
-num_positions = st.number_input("Number of Positions", min_value=1, value=1)
-budget = st.number_input("Budget", min_value=0.0, value=0.0)
-department = st.text_input("Department")
-jd_file = st.file_uploader("Or Upload JD (PDF/DOCX)", type=["pdf","docx"])
+st.header("Create / Update Job Description")
+
+jd_title = st.text_input(
+    "Job Title",
+    placeholder="e.g. Senior Python Developer",
+    key="jd_title"
+)
+
+jd_text_input = st.text_area(
+    "Full Job Description",
+    height=200,
+    placeholder="Paste the complete JD here or upload a file below...",
+    key="jd_text_input"
+)
+
+num_positions = st.number_input(
+    "Number of Open Positions",
+    min_value=1,
+    max_value=100,
+    value=1,
+    step=1,
+    key="num_positions"
+)
+
+budget_lpa = st.number_input(
+    "Budget per Position (in LPA)",
+    min_value=0.0,
+    max_value=200.0,
+    value=0.0,
+    step=0.5,
+    format="%.2f",
+    help="LPA = Lakhs Per Annum",
+    key="budget_lpa"
+)
+
+department = st.text_input(
+    "Department / Team",
+    placeholder="e.g. Engineering, Marketing, Data Science",
+    key="department"
+)
+
+st.markdown("**OR** upload a JD file (PDF or DOCX):")
+jd_file = st.file_uploader(
+    label="",
+    type=["pdf", "docx"],
+    accept_multiple_files=False,
+    key="jd_file_uploader"
+)
 
 if (jd_file or jd_text_input) and st.button("Save JD"):
     if jd_file:
