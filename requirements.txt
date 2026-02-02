@@ -1,0 +1,27 @@
+# requirements.txt
+
+# Core web app
+streamlit>=1.38.0
+
+# Database (Neon = PostgreSQL)
+psycopg2-binary>=2.9.9          # faster & safer than plain psycopg2 for most deployments
+# bcrypt>=4.2.0                 # for password hashing (uncomment if not already installed)
+
+# PDF & DOCX parsing
+pdfplumber>=0.11.4
+python-docx>=1.1.2
+
+# NLP / embeddings for semantic matching
+sentence-transformers>=3.1.1
+torch>=2.4.1                    # usually comes with sentence-transformers, but explicit is safer
+
+# Data handling & utils
+pandas>=2.2.2
+numpy>=1.26.4
+
+# File / temp handling (usually already in stdlib, but good to have explicit)
+python-multipart>=0.0.9         # helps with file uploads in some edge cases
+
+# Optional but useful for better experience / debugging
+python-dotenv>=1.0.1            # if you want to keep NEON_DSN in .env file
+uuid                            # stdlib, but sometimes people list it
