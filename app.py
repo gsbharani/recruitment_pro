@@ -463,8 +463,10 @@ else:
 st.header("🗓️ Interview Process")
 if st.session_state["jd_id"]:
     cur = conn.cursor()
-    cur.execute("SELECT id, resume_name FROM candidates WHERE jd_id = %s AND status NOT IN ('selected', 'rejected')          
-        ORDER BY score DESC ", (st.session_state["jd_id"],))
+    cur.execute("""
+        SELECT id, resume_name FROM candidates WHERE jd_id = %s AND status NOT IN ('selected', 'rejected')          
+        ORDER BY score DESC 
+    """, (st.session_state["jd_id"],))
     candidates = cur.fetchall()
     cur.close()
     if not candidates:
