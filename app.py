@@ -182,23 +182,24 @@ if not st.session_state["recruiter_id"]:
     st.stop()
 
 # ---------------- About Company Dashboard ----------------
-st.header("🏢 About Company")
+st.header("🏢 Company Snapshot")
 cur = conn.cursor()
 cur.execute("""
     SELECT 
         COUNT(*) FILTER (WHERE status = 'selected') AS selected,
         COUNT(*) FILTER (WHERE status = 'interview') AS in_interview,
         COUNT(*) FILTER (WHERE status = 'rejected') AS rejected,
-        (SELECT COUNT(DISTINCT id) FROM candidates WHERE status = 'selected') AS employees
+        COUNT(*) FILTER (WHERE status = 'uploaded' OR status = 'shortlisted') AS in_pipeline_count
+        
     FROM candidates WHERE recruiter_id = %s
 """, (st.session_state["recruiter_id"],))
 stats = cur.fetchone()
 cur.close()
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Employees (Selected)", stats[3])
-col2.metric("Selected", stats[0])
-col3.metric("In Interview", stats[1])
-col4.metric("Rejected", stats[2])
+col1.metric("Total Employees (Selected)", stats[0] or 0)
+col2.metric("In Interview", stats[1] or 0)
+col3.metric("Rejected", stats[2] or 0)
+col4.metric("In Pipeline", stats[3] or 0)
 
 # ---------------- Load Existing JDs ----------------
 st.header("📄 Job Description")
@@ -483,3 +484,69 @@ if st.session_state["jd_id"]:
             st.success("Interview scheduled ✅")
 else:
     st.info("Select a JD first.")
+
+# ---------------- Update Interview Outcome ----------------
+st.header("🔔 Update Interview Result")
+
+if st.session_state.get("jd_id"):
+    # Show only candidates who are in 'interview' status
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, resume_name, email, score, status
+        FROM candidates 
+        WHERE jd_id = %s AND status = 'interview'
+        ORDER BY score DESC
+    """, (st.session_state["jd_id"],))
+    interviewing_candidates = cur.fetchall()
+    cur.close()
+
+    if not interviewing_candidates:
+        st.info("No candidates currently in interview stage for this JD.")
+    else:
+        candidate_options = {f"{row[1]} ({row[2] or 'no email'})": row[0] for row in interviewing_candidates}
+        
+        selected_candidate_name = st.selectbox(
+            "Select Candidate to Update",
+            list(candidate_options.keys()),
+            key="outcome_candidate_select"
+        )
+        
+        if selected_candidate_name:
+            candidate_id = candidate_options[selected_candidate_name]
+            
+            outcome = st.radio(
+                "Interview Outcome",
+                options=["Selected", "Rejected", "On Hold", "No Show"],
+                key="outcome_radio"
+            )
+            
+            remarks = st.text_area(
+                "Remarks / Feedback (optional)",
+                height=120,
+                key="outcome_remarks"
+            )
+            
+            if st.button("Submit Outcome", key="submit_outcome_btn", type="primary"):
+                new_status = {
+                    "Selected": "selected",
+                    "Rejected": "rejected",
+                    "On Hold": "on_hold",
+                    "No Show": "rejected"   # or 'no_show' if you want to distinguish
+                }.get(outcome, "interview")
+                
+                cur = conn.cursor()
+                cur.execute("""
+                    UPDATE candidates 
+                    SET status = %s,
+                        final_remarks = %s,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (new_status, remarks or None, candidate_id))
+                
+                conn.commit()
+                cur.close()
+                
+                st.success(f"Outcome updated: **{outcome}** for {selected_candidate_name}")
+                st.rerun()   # refresh dashboard & stats
+else:
+    st.info("Select a Job Description first.")
