@@ -115,25 +115,25 @@ if not st.session_state.get("user_id"):
     tab1, tab2 = st.tabs(["Login", "Signup"])
     
     with tab1:
-    username = st.text_input("Username", key="login_username")
-    password = st.text_input("Password", type="password", key="login_password")
-    if st.button("Login"):
-        cur = conn.cursor()
-        cur.execute("SELECT id, password FROM users WHERE username = %s", (username,))
-        user = cur.fetchone()
-        cur.close()
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Login"):
+            cur = conn.cursor()
+            cur.execute("SELECT id, password FROM users WHERE username = %s", (username,))
+            user = cur.fetchone()
+            cur.close()
         
-        if user:
+            if user:
             # Convert memoryview → bytes
-            stored_hash = bytes(user[1])          # ← this fixes it
-            if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
-                st.session_state["user_id"] = user[0]
-                st.success("Logged in successfully!")
-                st.rerun()
+                stored_hash = bytes(user[1])          # ← this fixes it
+                if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                     st.session_state["user_id"] = user[0]
+                     st.success("Logged in successfully!")
+                     st.rerun()
+                else:
+                     st.error("Invalid password")
             else:
-                st.error("Invalid password")
-        else:
-            st.error("User not found")
+                st.error("User not found")
     
     with tab2:
         new_username = st.text_input("New Username", key="signup_username")
