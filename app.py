@@ -472,22 +472,48 @@ if st.session_state["jd_id"]:
     if not candidates:
         st.info("No candidates available to schedule interviews (all selected or rejected).")
     else:
-    candidate_map = {c[1]: c[0] for c in candidates} if candidates else {}
-    selected_candidate = st.selectbox("Select Candidate to Schedule Interview", list(candidate_map.keys()))
-    selected_interviewer = st.selectbox("Select Interviewer", list(interviewer_map.keys()))
-    schedule_date = st.date_input("Schedule Date")
-    if st.button("Schedule Interview"):
-        if selected_candidate and selected_interviewer:
-            interview_id = str(uuid.uuid4())
-            candidate_id = candidate_map[selected_candidate]
-            interviewer_id = interviewer_map[selected_interviewer][0]
-            cur = conn.cursor()
-            cur.execute("INSERT INTO interviews (id, candidate_id, interviewer_id, status, scheduled_date) VALUES (%s, %s, %s, 'scheduled', %s)",
-                        (interview_id, candidate_id, interviewer_id, schedule_date))
-            cur.execute("UPDATE candidates SET status = 'interview' WHERE id = %s", (candidate_id,))
-            conn.commit()
-            cur.close()
-            st.success("Interview scheduled ✅")
+        # Safe mapping (though we already checked candidates exists)
+        candidate_map = {row[1]: row[0] for row in candidates}
+
+        selected_candidate_name = st.selectbox(
+            "Select Candidate to Schedule Interview",
+            options=list(candidate_map.keys()),
+            key="schedule_candidate_select"
+        )
+
+        selected_interviewer_name = st.selectbox(
+            "Select Interviewer",
+            options=list(interviewer_map.keys()),
+            key="schedule_interviewer_select"
+        )
+
+        schedule_date = st.date_input(
+            "Preferred Interview Date",
+            key="schedule_date_input"
+        )
+
+        if st.button("Schedule Interview", type="primary", key="schedule_confirm_btn"):
+            if not selected_candidate_name or not selected_interviewer_name:
+                st.warning("Please select both a candidate and an interviewer.")
+            else:
+                candidate_id = candidate_map[selected_candidate_name]
+                interviewer_id = interviewer_map[selected_interviewer_name][0]  # assuming tuple (id, name, dept)
+
+                # Insert into interviews table
+                interview_id = str(uuid.uuid4())
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO interviews (id, candidate_id, interviewer_id, status, scheduled_date)
+                    VALUES (%s, %s, %s, 'scheduled', %s)
+                """, (interview_id, candidate_id, interviewer_id, schedule_date))
+                
+                # Update candidate status
+                cur.execute("UPDATE candidates SET status = 'interview' WHERE id = %s", (candidate_id,))
+                conn.commit()
+                cur.close()
+
+                st.success(f"Interview scheduled for **{selected_candidate_name}** with **{selected_interviewer_name}** on **{schedule_date}**")
+                st.rerun()  # refresh page to update lists
 else:
     st.info("Select a JD first.")
 
