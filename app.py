@@ -404,7 +404,7 @@ if st.session_state["jd_id"]:
 # ---------------- Interview Panel ----------------
 st.header("👥 Interview Panel")
 cur = conn.cursor()
-cur.execute("SELECT id, name, department FROM interviewers WHERE recruiter_id = %s and status <> 'Selected'", (st.session_state["recruiter_id"],))
+cur.execute("SELECT id, name, department FROM interviewers WHERE recruiter_id = %s", (st.session_state["recruiter_id"],))
 interviewers = cur.fetchall()
 cur.close()
 interviewer_map = {i[1]: i for i in interviewers} if interviewers else {}
@@ -463,9 +463,13 @@ else:
 st.header("🗓️ Interview Process")
 if st.session_state["jd_id"]:
     cur = conn.cursor()
-    cur.execute("SELECT id, resume_name FROM candidates WHERE jd_id = %s ", (st.session_state["jd_id"],))
+    cur.execute("SELECT id, resume_name FROM candidates WHERE jd_id = %s AND status NOT IN ('selected', 'rejected')          
+        ORDER BY score DESC ", (st.session_state["jd_id"],))
     candidates = cur.fetchall()
     cur.close()
+    if not candidates:
+        st.info("No candidates available to schedule interviews (all selected or rejected).")
+    else:
     candidate_map = {c[1]: c[0] for c in candidates} if candidates else {}
     selected_candidate = st.selectbox("Select Candidate to Schedule Interview", list(candidate_map.keys()))
     selected_interviewer = st.selectbox("Select Interviewer", list(interviewer_map.keys()))
