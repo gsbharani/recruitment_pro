@@ -366,20 +366,36 @@ cur.execute("SELECT id, name, department FROM interviewers WHERE recruiter_id = 
 interviewers = cur.fetchall()
 cur.close()
 interviewer_map = {i[1]: i for i in interviewers} if interviewers else {}
-selected_interviewer = st.selectbox("Select Interviewer", ["Add New"] + list(interviewer_map.keys()))
+selected_interviewer = st.selectbox(
+    "Select Interviewer",
+    ["Add New"] + list(interviewer_map.keys()),
+    key="select_interviewer"                      # ← good practice
+)
 
 if selected_interviewer == "Add New":
-    new_name = st.text_input("Interviewer Name")
-    new_dept = st.text_input("Department")
-    if st.button("Add Interviewer"):
-        interviewer_id = str(uuid.uuid4())
-        cur = conn.cursor()
-        cur.execute("INSERT INTO interviewers (id, recruiter_id, name, department) VALUES (%s, %s, %s, %s)",
-                    (interviewer_id, st.session_state["recruiter_id"], new_name, new_dept))
-        conn.commit()
-        cur.close()
-        st.success("Interviewer added ✅")
-        st.rerun()
+    new_name = st.text_input(
+        "Interviewer Name",
+        key="new_interviewer_name"                # ← critical
+    )
+    new_dept = st.text_input(
+        "Department",
+        key="new_interviewer_dept"                # ← this fixes your error
+    )
+    if st.button("Add Interviewer", key="add_interviewer_btn"):
+        if new_name and new_dept:
+            # your insert logic here
+            interviewer_id = str(uuid.uuid4())
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO interviewers (id, recruiter_id, name, department) VALUES (%s, %s, %s, %s)",
+                (interviewer_id, st.session_state["recruiter_id"], new_name, new_dept)
+            )
+            conn.commit()
+            cur.close()
+            st.success("Interviewer added ✅")
+            st.rerun()                          # optional: refresh
+        else:
+            st.warning("Please fill both name and department")
 
 # Dashboard for interviews
 st.subheader("Interview Stats")
