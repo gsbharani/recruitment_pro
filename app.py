@@ -404,7 +404,7 @@ if st.session_state["jd_id"]:
 # ---------------- Interview Panel ----------------
 st.header("👥 Interview Panel")
 cur = conn.cursor()
-cur.execute("SELECT id, name, department FROM interviewers WHERE recruiter_id = %s", (st.session_state["recruiter_id"],))
+cur.execute("SELECT id, name, department FROM interviewers WHERE recruiter_id = %s and status <> 'Selected'", (st.session_state["recruiter_id"],))
 interviewers = cur.fetchall()
 cur.close()
 interviewer_map = {i[1]: i for i in interviewers} if interviewers else {}
