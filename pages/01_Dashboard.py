@@ -1,6 +1,6 @@
 # pages/01_Dashboard.py
 import streamlit as st
-import path
+from pathlib import Path
 from db import conn  # adjust import path as needed
 import pandas as pd
 
