@@ -127,12 +127,12 @@ st.markdown("Select a section to continue:")
 
 # Top horizontal tabs (clean, modern top bar)
 tab_dashboard, tab_jobs, tab_candidates, tab_pipeline, tab_interviews, tab_panel = st.tabs([
-    "🏢 **Dashboard**",
-    "📋 **Jobs**",
-    "👤 **Candidates**",
-    "🔄 **Pipeline**",
-    "📅 **Interviews**",
-    "👥 **Panel Members**"
+    "🏢 Dashboard",
+    "📋 Jobs**",
+    "👤 Candidates",
+    "🔄 Pipeline",
+    "📅 Interviews",
+    "👥 Panel Members"
 ])
 
 # Switch pages based on active tab
