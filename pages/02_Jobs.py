@@ -1,12 +1,17 @@
 # pages/02_Jobs.py
 import streamlit as st
-import uuid
 from pathlib import Path
 import tempfile
+import uuid
 import pandas as pd
-from db import conn
-from text_utils import extract_text                  # ← your text extraction function
-from jd_skill_extractor import extract_skills_from_jd  # ← your skill extractor
+from resume_parser import parse_resume
+from text_utils import extract_text, match_skills
+from matcher import semantic_score, skill_score
+from db import get_connection, save_candidate  # Updated to use Neon/Postgres
+from jd_skill_extractor import extract_skills_from_jd
+import bcrypt
+import psycopg2
+
 
 st.title("Jobs / Open Positions")
 
