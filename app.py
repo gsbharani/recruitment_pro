@@ -5,27 +5,20 @@ import bcrypt
 import psycopg2
 from db import get_connection
 
-# ── Page config ──────────────────────────────────────────────────────
+# ── Page config (MUST be first thing) ────────────────────────────────
 st.set_page_config(
     page_title="Talent Fit Analyzer",
     page_icon="🧑‍💼",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"   # hide real sidebar
 )
 
-# ── Database init (only once) ────────────────────────────────────────
+# ── Database init ────────────────────────────────────────────────────
 def init_db():
     conn = get_connection()
     cur = conn.cursor()
-    # Your CREATE TABLE statements (keep them as-is)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id UUID PRIMARY KEY,
-            username VARCHAR(255) UNIQUE NOT NULL,
-            password BYTEA NOT NULL,
-            role VARCHAR(50) DEFAULT 'recruiter'
-        );
-    """)
-    # ... (all other CREATE TABLE statements for recruiters, job_requirements, etc.)
+    # Your CREATE TABLE statements here (unchanged)
+    # ...
     conn.commit()
     cur.close()
     return conn
@@ -128,38 +121,39 @@ if not st.session_state.recruiter_id:
 
         st.stop()
 
-# ── 3. Authenticated → Big Button Dashboard ──────────────────────────
+# ── 3. Authenticated → Top Tabs Navigation ───────────────────────────
 st.title("Welcome to Talent Fit Analyzer")
-st.markdown("Choose what you'd like to do next:")
+st.markdown("Select a section to continue:")
 
-# Center the buttons using columns
-col1, col2, col3 = st.columns([1, 3, 1])
+# Top horizontal tabs (clean, modern top bar)
+tab_dashboard, tab_jobs, tab_candidates, tab_pipeline, tab_interviews, tab_panel = st.tabs([
+    "🏢 **Dashboard**",
+    "📋 **Jobs**",
+    "👤 **Candidates**",
+    "🔄 **Pipeline**",
+    "📅 **Interviews**",
+    "👥 **Panel Members**"
+])
 
+# Switch pages based on active tab
+if tab_dashboard:
+    st.switch_page("pages/01_Dashboard.py")
+elif tab_jobs:
+    st.switch_page("pages/02_Jobs.py")
+elif tab_candidates:
+    st.switch_page("pages/03_Candidates.py")
+elif tab_pipeline:
+    st.switch_page("pages/04_Pipeline.py")
+elif tab_interviews:
+    st.switch_page("pages/05_Interviews.py")
+elif tab_panel:
+    st.switch_page("pages/06_Panel_Members.py")
 
-with col2:
-    st.markdown("### Quick Actions")
-    
-    if st.button("🏢 **Dashboard** – View key metrics & recent activity", use_container_width=True):
-        st.switch_page("pages/01_Dashboard.py")
-
-    if st.button("📋 **Jobs** – Manage open positions & requisitions", use_container_width=True):
-        st.switch_page("pages/02_Jobs.py")
-
-    if st.button("👤 **Candidates** – Upload, rank & review talent", use_container_width=True):
-        st.switch_page("pages/03_Candidates.py")
-
-    if st.button("🔄 **Pipeline** – Track candidates through stages", use_container_width=True):
-        st.switch_page("pages/04_Pipeline.py")
-
-    if st.button("🗓️ **Interviews** – Schedule & update outcomes", use_container_width=True):
-        st.switch_page("pages/05_Interviews.py")
-
-    if st.button("👥 **Panel** – Manage interviewers & availability", use_container_width=True):
-        st.switch_page("pages/06_Panel_Members.py")
-        
-# Logout at the bottom
+# Optional: small footer with logout
 st.markdown("---")
-if st.button("Sign Out", type="secondary"):
-    for k in list(st.session_state.keys()):
-        del st.session_state[k]
-    st.rerun()
+col_left, col_right = st.columns([8, 2])
+with col_right:
+    if st.button("Sign Out", type="secondary", use_container_width=True):
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
+        st.rerun()
