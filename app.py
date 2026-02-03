@@ -206,25 +206,6 @@ if not st.session_state.recruiter_id:
 # ── 3. Only reach here when fully authenticated ──────────────────
 # Show sidebar navigation only now
 
-pages = {
-    "Dashboard": st.Page("pages/01_dashboard.py", icon=":material/dashboard:"),
-    "Jobs": st.Page("pages/02_jobs.py", icon=":material/work:"),
-    "Candidates": st.Page("pages/03_candidates.py", icon=":material/people:"),
-    "Pipeline": st.Page("pages/04_pipeline.py", icon=":material/linear_scale:"),
-    "Interviews": st.Page("pages/05_interviews.py", icon=":material/event:"),
-    "Panel Members": st.Page("pages/06_panel.py", icon=":material/groups:"),
-}
-
-# Optional: small user info + logout in sidebar
-with st.sidebar:
-    st.markdown(f"**Welcome** — {st.session_state.get('user_name', 'User')}")
-    if st.button("Sign Out", type="secondary", key="logout"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        st.rerun()
-
-pg = st.navigation(pages)
-pg.run()
 
 # ---------------- About Company Dashboard ----------------
 st.header("🏢 Company Snapshot")
