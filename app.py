@@ -124,7 +124,8 @@ if not st.session_state.recruiter_id:
 # ── 3. Authenticated → Top Tabs Navigation ───────────────────────────
 st.title("Welcome to Talent Fit Analyzer")
 st.markdown("Select a section to continue:")
-
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = 0  # default to first tab (Dashboard)
 # Top horizontal tabs (clean, modern top bar)
 tab_dashboard, tab_jobs, tab_candidates, tab_pipeline, tab_interviews, tab_panel = st.tabs([
     "🏢 Dashboard",
@@ -134,9 +135,12 @@ tab_dashboard, tab_jobs, tab_candidates, tab_pipeline, tab_interviews, tab_panel
     "📅 Interviews",
     "👥 Panel Members"
 ])
-
+for i, tab in enumerate(tabs):
+    if tab:
+        st.session_state.active_tab = i
+        break
 # Switch pages based on active tab
-if tab_dashboard:
+if st.session_state.active_tab == 0:
     st.switch_page("pages/01_Dashboard.py")
 elif tab_jobs:
     st.switch_page("pages/02_Jobs.py")
