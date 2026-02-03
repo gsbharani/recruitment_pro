@@ -13,7 +13,12 @@ import bcrypt
 import psycopg2
 
 # ---------------- Page Config ----------------
-st.set_page_config("Talent Fit Analyzer", layout="wide")
+st.set_page_config(
+    page_title="Talent Fit Analyzer",
+    page_icon="🧑‍💼",
+    layout="wide",
+    initial_sidebar_state="collapsed"   # hide sidebar until logged in
+)
 
 # ---------------- Database Connection ----------------
 def init_db():
