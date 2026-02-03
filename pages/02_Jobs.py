@@ -19,7 +19,7 @@ tab_list, tab_new = st.tabs(["All Jobs", "Create / Edit Job"])
 
 # ── Tab 1: List all jobs ───────────────────────────────────────────────
 with tab_list:
-    with conn.cursor() as cur:
+    with get_connection.cursor() as cur:
         cur.execute("""
             SELECT id, title, department, num_positions, budget, status, created_at
             FROM job_requirements
@@ -52,7 +52,7 @@ with tab_new:
     st.subheader("Create or Edit Job Requirement")
 
     # Optional: Select existing job to edit
-    with conn.cursor() as cur:
+    with get_connection.cursor() as cur:
         cur.execute("SELECT id, title FROM job_requirements WHERE recruiter_id = %s", (st.session_state.recruiter_id,))
         existing = cur.fetchall()
 
@@ -63,7 +63,7 @@ with tab_new:
     if selected != "Create New":
         # Extract ID from selection
         jd_id = selected.split("ID: ")[-1].strip(")")
-        with conn.cursor() as cur:
+        with get_connection.cursor() as cur:
             cur.execute("""
                 SELECT title, department, num_positions, budget, jd_text, skills
                 FROM job_requirements WHERE id = %s
@@ -120,7 +120,7 @@ with tab_new:
             final_id = jd_id or str(uuid.uuid4())
             final_title = jd_title or fallback_title
 
-            with conn.cursor() as cur:
+            with get_connection.cursor() as cur:
                 cur.execute("""
                     INSERT INTO job_requirements 
                     (id, recruiter_id, title, jd_text, skills, num_positions, budget, department)
@@ -133,7 +133,7 @@ with tab_new:
                         budget = EXCLUDED.budget,
                         department = EXCLUDED.department
                 """, (final_id, st.session_state["recruiter_id"], final_title, jd_text, auto_skills, num_positions, budget_lpa, department))
-                conn.commit()
+                get_connection.commit()
 
             # Update session state for skills editing
             st.session_state["jd_id"] = final_id
@@ -155,10 +155,10 @@ with tab_new:
         )
         if st.button("Save Skills", key="save_skills_btn"):
             new_skills = [s.strip().lower() for s in skills_input.split(",") if s.strip()]
-            with conn.cursor() as cur:
+            with get_connection.cursor() as cur:
                 cur.execute("UPDATE job_requirements SET skills = %s WHERE id = %s",
                             (new_skills, st.session_state["jd_id"]))
-                conn.commit()
+                get_connection.commit()
             st.session_state["skills"] = new_skills
             st.success("Skills updated!")
             st.rerun()
