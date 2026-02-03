@@ -1,8 +1,17 @@
 # pages/01_Dashboard.py
 import streamlit as st
 from pathlib import Path
-from db import conn  # adjust import path as needed
+import tempfile
+import uuid
 import pandas as pd
+from resume_parser import parse_resume
+from text_utils import extract_text, match_skills
+from matcher import semantic_score, skill_score
+from db import get_connection, save_candidate  # Updated to use Neon/Postgres
+from jd_skill_extractor import extract_skills_from_jd
+import bcrypt
+import psycopg2
+
 
 st.title("Dashboard")
 
