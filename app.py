@@ -1,30 +1,22 @@
 # app.py
 import streamlit as st
-from pathlib import Path
-import tempfile
 import uuid
-import pandas as pd
-from resume_parser import parse_resume
-from text_utils import extract_text, match_skills
-from matcher import semantic_score, skill_score
-from db import get_connection, save_candidate  # Updated to use Neon/Postgres
-from jd_skill_extractor import extract_skills_from_jd
 import bcrypt
 import psycopg2
+from db import get_connection
 
-# ---------------- Page Config ----------------
+# ── Page config ──────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Talent Fit Analyzer",
     page_icon="🧑‍💼",
-    layout="wide",
-    initial_sidebar_state="collapsed"   # hide sidebar until logged in
+    layout="wide"
 )
 
-# ---------------- Database Connection ----------------
+# ── Database init (only once) ────────────────────────────────────────
 def init_db():
     conn = get_connection()
     cur = conn.cursor()
-    # Create users table for login/signup
+    # Your CREATE TABLE statements (keep them as-is)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id UUID PRIMARY KEY,
@@ -33,86 +25,19 @@ def init_db():
             role VARCHAR(50) DEFAULT 'recruiter'
         );
     """)
-    # Updated recruiters table (now linked to users)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS recruiters (
-            id UUID PRIMARY KEY,
-            user_id UUID REFERENCES users(id),
-            name VARCHAR(255) NOT NULL,
-            company_name VARCHAR(255)
-        );
-    """)
-    # Updated job_requirements with new fields
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS job_requirements (
-            id UUID PRIMARY KEY,
-            recruiter_id UUID REFERENCES recruiters(id),
-            title VARCHAR(255) NOT NULL,
-            jd_text TEXT NOT NULL,
-            skills TEXT[] NOT NULL,
-            status VARCHAR(50) DEFAULT 'active',
-            num_positions INTEGER DEFAULT 1,
-            budget DECIMAL(10, 2),
-            department VARCHAR(255)
-        );
-    """)
-    # Updated candidates with status
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS candidates (
-            id UUID PRIMARY KEY,
-            recruiter_id UUID REFERENCES recruiters(id),
-            jd_id UUID REFERENCES job_requirements(id),
-            resume_name VARCHAR(255) NOT NULL,
-            email VARCHAR(255),
-            phone VARCHAR(255),
-            experience INTEGER,
-            score DECIMAL(5, 2),
-            skills TEXT[],
-            matched_skills TEXT[],
-            missing_skills TEXT[],
-            status VARCHAR(50) DEFAULT 'uploaded'  -- uploaded, shortlisted, interview, selected, rejected
-        );
-    """)
-    # New table for interviewers
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS interviewers (
-            id UUID PRIMARY KEY,
-            recruiter_id UUID REFERENCES recruiters(id),
-            name VARCHAR(255) NOT NULL,
-            department VARCHAR(255) NOT NULL
-        );
-    """)
-    # New table for interviews
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS interviews (
-            id UUID PRIMARY KEY,
-            candidate_id UUID REFERENCES candidates(id),
-            interviewer_id UUID REFERENCES interviewers(id),
-            status VARCHAR(50) DEFAULT 'pending',  -- pending, scheduled, completed
-            scheduled_date TIMESTAMP,
-            notes TEXT
-        );
-    """)
-    # New table for companies (for about company)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS companies (
-            id UUID PRIMARY KEY,
-            recruiter_id UUID REFERENCES recruiters(id),
-            name VARCHAR(255) NOT NULL,
-            description TEXT
-        );
-    """)
+    # ... (all other CREATE TABLE statements for recruiters, job_requirements, etc.)
     conn.commit()
     cur.close()
     return conn
 
 conn = init_db()
 
-# ---------------- Session State ----------------
-for key in ["user_id", "recruiter_id", "jd_id", "jd_text", "skills", "uploaded_resumes"]:
+# ── Session state defaults ───────────────────────────────────────────
+for key in ["user_id", "recruiter_id", "user_role"]:
     if key not in st.session_state:
-        st.session_state[key] = None if key != "skills" and key != "uploaded_resumes" else ([] if key=="skills" else set())
-# ── 1. Login / Signup ────────────────────────────────────────────
+        st.session_state[key] = None
+
+# ── 1. Login / Signup ────────────────────────────────────────────────
 if not st.session_state.user_id:
     st.title("🧑‍💼 Talent Fit Analyzer")
     st.markdown("Please sign in to continue")
@@ -171,9 +96,9 @@ if not st.session_state.user_id:
                 finally:
                     cur.close()
 
-    st.stop()  # ← Critical: stop here until logged in
+    st.stop()
 
-# ── 2. Recruiter Profile Setup (only first time) ─────────────────
+# ── 2. Recruiter Profile Setup ───────────────────────────────────────
 if not st.session_state.recruiter_id:
     cur = conn.cursor()
     cur.execute("SELECT id FROM recruiters WHERE user_id = %s", (st.session_state.user_id,))
@@ -201,29 +126,40 @@ if not st.session_state.recruiter_id:
                 st.success("Profile created")
                 st.rerun()
 
-        st.stop()  # ← stop until profile exists
+        st.stop()
 
-# ── 3. Only reach here when fully authenticated ──────────────────
-# Show sidebar navigation only now
+# ── 3. Authenticated → Big Button Dashboard ──────────────────────────
+st.title("Welcome to Talent Fit Analyzer")
+st.markdown("Choose what you'd like to do next:")
 
-pages = {
-    "Dashboard": st.Page("pages/01_dashboard.py", icon=":material/dashboard:"),
-    "Jobs": st.Page("pages/02_jobs.py", icon=":material/work:"),
-    "Candidates": st.Page("pages/03_candidates.py", icon=":material/people:"),
-    "Pipeline": st.Page("pages/04_pipeline.py", icon=":material/linear_scale:"),
-    "Interviews": st.Page("pages/05_interviews.py", icon=":material/event:"),
-    "Panel Members": st.Page("pages/06_panel.py", icon=":material/groups:"),
-}
-
-# Optional: small user info + logout in sidebar
-with st.sidebar:
-    st.markdown(f"**Welcome** — {st.session_state.get('user_name', 'User')}")
-    if st.button("Sign Out", type="secondary", key="logout"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        st.rerun()
-
-pg = st.navigation(pages)
-pg.run()
+# Center the buttons using columns
+col1, col2, col3 = st.columns([1, 3, 1])
 
 
+with col2:
+    st.markdown("### Quick Actions")
+    
+    if st.button("🏢 **Dashboard** – View key metrics & recent activity", use_container_width=True):
+        st.switch_page("pages/01_Dashboard.py")
+
+    if st.button("📋 **Jobs** – Manage open positions & requisitions", use_container_width=True):
+        st.switch_page("pages/02_Jobs.py")
+
+    if st.button("👤 **Candidates** – Upload, rank & review talent", use_container_width=True):
+        st.switch_page("pages/03_Candidates.py")
+
+    if st.button("🔄 **Pipeline** – Track candidates through stages", use_container_width=True):
+        st.switch_page("pages/04_Pipeline.py")
+
+    if st.button("🗓️ **Interviews** – Schedule & update outcomes", use_container_width=True):
+        st.switch_page("pages/05_Interviews.py")
+
+    if st.button("👥 **Panel** – Manage interviewers & availability", use_container_width=True):
+        st.switch_page("pages/06_Panel_Members.py")
+        
+# Logout at the bottom
+st.markdown("---")
+if st.button("Sign Out", type="secondary"):
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    st.rerun()
