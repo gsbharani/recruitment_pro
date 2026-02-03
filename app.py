@@ -129,7 +129,7 @@ if "active_tab" not in st.session_state:
 # Top horizontal tabs (clean, modern top bar)
 tab_dashboard, tab_jobs, tab_candidates, tab_pipeline, tab_interviews, tab_panel = st.tabs([
     "🏢 Dashboard",
-    "📋 Jobs**",
+    "📋 Jobs",
     "👤 Candidates",
     "🔄 Pipeline",
     "📅 Interviews",
