@@ -112,79 +112,119 @@ conn = init_db()
 for key in ["user_id", "recruiter_id", "jd_id", "jd_text", "skills", "uploaded_resumes"]:
     if key not in st.session_state:
         st.session_state[key] = None if key != "skills" and key != "uploaded_resumes" else ([] if key=="skills" else set())
+# ── 1. Login / Signup ────────────────────────────────────────────
+if not st.session_state.user_id:
+    st.title("🧑‍💼 Talent Fit Analyzer")
+    st.markdown("Please sign in to continue")
 
-# ---------------- Login/Signup ----------------
-st.title("🧑‍💼✅ Talent Fit Analyzer - Instantly Find the Best Candidates")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-if not st.session_state.get("user_id"):
-    tab1, tab2 = st.tabs(["Login", "Signup"])
-    
-    with tab1:
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Login"):
-            cur = conn.cursor()
-            cur.execute("SELECT id, password FROM users WHERE username = %s", (username,))
-            user = cur.fetchone()
-            cur.close()
-        
-            if user:
-            # Convert memoryview → bytes
-                stored_hash = bytes(user[1])          # ← this fixes it
-                if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
-                     st.session_state["user_id"] = user[0]
-                     st.success("Logged in successfully!")
-                     st.rerun()
+    with tab_login:
+        username = st.text_input("Username", key="login_un")
+        password = st.text_input("Password", type="password", key="login_pw")
+
+        if st.button("Sign In", type="primary", use_container_width=True):
+            if not username or not password:
+                st.error("Please enter username and password")
+            else:
+                cur = conn.cursor()
+                cur.execute("SELECT id, password, role FROM users WHERE username = %s", (username,))
+                user = cur.fetchone()
+                cur.close()
+
+                if user:
+                    stored_hash = bytes(user[1])
+                    if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                        st.session_state.user_id = user[0]
+                        st.session_state.user_role = user[2] or 'recruiter'
+                        st.success("Login successful")
+                        st.rerun()
+                    else:
+                        st.error("Incorrect password")
                 else:
-                     st.error("Invalid password")
-            else:
-                st.error("User not found")
-    
-    with tab2:
-        new_username = st.text_input("New Username", key="signup_username")
-        new_password = st.text_input("New Password", type="password", key="signup_password")
-        confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm")
-        if st.button("Signup"):
-            if new_password != confirm_password:
+                    st.error("User not found")
+
+    with tab_signup:
+        new_un = st.text_input("Choose Username", key="signup_un")
+        new_pw = st.text_input("New Password", type="password", key="signup_pw")
+        confirm_pw = st.text_input("Confirm Password", type="password", key="signup_confirm")
+
+        if st.button("Create Account", type="primary", use_container_width=True):
+            if new_pw != confirm_pw:
                 st.error("Passwords do not match")
+            elif len(new_pw) < 8:
+                st.error("Password must be at least 8 characters")
             else:
-                hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+                hashed = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt())
                 cur = conn.cursor()
                 try:
-                    cur.execute("INSERT INTO users (id, username, password) VALUES (%s, %s, %s)",
-                                (str(uuid.uuid4()), new_username, hashed_pw))
+                    cur.execute(
+                        "INSERT INTO users (id, username, password, role) VALUES (%s, %s, %s, 'recruiter')",
+                        (str(uuid.uuid4()), new_un.strip(), hashed)
+                    )
                     conn.commit()
-                    st.success("Account created! Please login.")
+                    st.success("Account created. You can now log in.")
                 except psycopg2.IntegrityError:
-                    st.error("Username already exists")
+                    st.error("Username already taken")
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
                 finally:
                     cur.close()
-    st.stop()
 
-# ---------------- Load Recruiter ----------------
-cur = conn.cursor()
-cur.execute("SELECT id, name FROM recruiters WHERE user_id = %s", (st.session_state["user_id"],))
-recruiter = cur.fetchone()
-cur.close()
-if not recruiter:
-    st.header("👤 Setup Recruiter Profile")
-    recruiter_name = st.text_input("Your Name")
-    company_name = st.text_input("Company Name")
-    if st.button("Create Recruiter"):
-        recruiter_id = str(uuid.uuid4())
-        cur = conn.cursor()
-        cur.execute("INSERT INTO recruiters (id, user_id, name, company_name) VALUES (%s, %s, %s, %s)",
-                    (recruiter_id, st.session_state["user_id"], recruiter_name, company_name))
-        conn.commit()
-        cur.close()
-        st.session_state["recruiter_id"] = recruiter_id
-        st.success("Recruiter profile created ✅")
+    st.stop()  # ← Critical: stop here until logged in
+
+# ── 2. Recruiter Profile Setup (only first time) ─────────────────
+if not st.session_state.recruiter_id:
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM recruiters WHERE user_id = %s", (st.session_state.user_id,))
+    rec = cur.fetchone()
+    cur.close()
+
+    if not rec:
+        st.header("👤 Complete your recruiter profile")
+        full_name = st.text_input("Your Full Name", key="rec_name")
+        company = st.text_input("Company / Organization Name", key="rec_company")
+
+        if st.button("Create Profile", type="primary"):
+            if not full_name.strip() or not company.strip():
+                st.error("All fields are required")
+            else:
+                rid = str(uuid.uuid4())
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO recruiters (id, user_id, name, company_name) VALUES (%s, %s, %s, %s)",
+                    (rid, st.session_state.user_id, full_name.strip(), company.strip())
+                )
+                conn.commit()
+                cur.close()
+                st.session_state.recruiter_id = rid
+                st.success("Profile created")
+                st.rerun()
+
+        st.stop()  # ← stop until profile exists
+
+# ── 3. Only reach here when fully authenticated ──────────────────
+# Show sidebar navigation only now
+
+pages = {
+    "Dashboard": st.Page("pages/01_dashboard.py", icon=":material/dashboard:"),
+    "Jobs": st.Page("pages/02_jobs.py", icon=":material/work:"),
+    "Candidates": st.Page("pages/03_candidates.py", icon=":material/people:"),
+    "Pipeline": st.Page("pages/04_pipeline.py", icon=":material/linear_scale:"),
+    "Interviews": st.Page("pages/05_interviews.py", icon=":material/event:"),
+    "Panel Members": st.Page("pages/06_panel.py", icon=":material/groups:"),
+}
+
+# Optional: small user info + logout in sidebar
+with st.sidebar:
+    st.markdown(f"**Welcome** — {st.session_state.get('user_name', 'User')}")
+    if st.button("Sign Out", type="secondary", key="logout"):
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
         st.rerun()
-else:
-    st.session_state["recruiter_id"] = recruiter[0]
 
-if not st.session_state["recruiter_id"]:
-    st.stop()
+pg = st.navigation(pages)
+pg.run()
 
 # ---------------- About Company Dashboard ----------------
 st.header("🏢 Company Snapshot")
